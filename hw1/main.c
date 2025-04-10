@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-//============= hw0 原始程式碼(讀取自身檔案並計算字元次數) =============//
+// ============ hw0 原始程式碼(以鏈結串列紀錄字元出現次數) ============ //
 typedef struct Node {
     char character;
     int count;
     struct Node *next;
 } Node;
 
+// 新增或更新字元計數的節點
 Node* addNode(Node *head, char c) {
     Node *temp = head;
     while (temp) {
@@ -19,6 +20,7 @@ Node* addNode(Node *head, char c) {
         temp = temp->next;
     }
     
+    // 若目前串列沒有該字元，則新建一個節點並插入串列開頭
     Node *newNode = (Node*)malloc(sizeof(Node));
     newNode->character = c;
     newNode->count = 1;
@@ -26,6 +28,7 @@ Node* addNode(Node *head, char c) {
     return newNode;
 }
 
+// 釋放整個鏈結串列
 void freeList(Node *head) {
     Node *temp;
     while (head) {
@@ -35,9 +38,9 @@ void freeList(Node *head) {
     }
 }
 
-//============= Scanner 相關函式/巨集定義 =============//
+// ============ Scanner 相關函式 ============ //
 
-// 判斷是否為英文字母(不使用 ctype.h，自己寫)
+// (不使用 ctype.h) 自行判斷是否為英文字母
 int isAlpha(char c) {
     return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
 }
@@ -47,46 +50,49 @@ int isDigit(char c) {
     return (c >= '0' && c <= '9');
 }
 
-// 判斷是否為英數或底線(可用來處理識別字)
+// 判斷是否為英數或底線
 int isAlnumOrUnderscore(char c) {
     return (isAlpha(c) || isDigit(c) || c == '_');
 }
 
-// 輸出 Token
+// Token 輸出函式
 void printToken(const char *lexeme, const char *tokenType) {
-    // 輸出格式：lexeme: TOKEN_TYPE
+    // 例如：int: TYPE_TOKEN
     printf("%s: %s\n", lexeme, tokenType);
 }
 
 int main() {
-    //============ 第一階段：hw0：計算字元出現次數 ============//
-    FILE *file = fopen(__FILE__, "r");
+    const char *targetFile = "Token.c";
+
+    // ============== 第一階段：hw0 功能 ============== //
+    // 打開 Token.c 並計算每個字元的出現次數
+    FILE *file = fopen(targetFile, "r");
     if (!file) {
-        fprintf(stderr, "Failed to open file.\n");
+        fprintf(stderr, "Failed to open %s.\n", targetFile);
         return 1;
     }
-    
+
     Node *head = NULL;
     char c;
     while ((c = fgetc(file)) != EOF) {
         head = addNode(head, c);
     }
     fclose(file);
-    
-    // 列印所有字元出現次數
+
+    // 印出 Token.c 裡每個字元的出現次數
     Node *temp = head;
     while (temp) {
+        // 若要忽略換行或空白等字元的印出，可自行加判斷
         printf("%c : %d\n", temp->character, temp->count);
         temp = temp->next;
     }
-    
-    // 釋放鏈結串列
     freeList(head);
 
-    //============ 第二階段：Scanner：辨識 Token ============//
-    file = fopen(__FILE__, "r");
+    // ============== 第二階段：Scanner 辨識 Token ============== //
+    // 再次打開 Token.c
+    file = fopen(targetFile, "r");
     if (!file) {
-        fprintf(stderr, "Failed to open file (second pass).\n");
+        fprintf(stderr, "Failed to open %s on second pass.\n", targetFile);
         return 1;
     }
 
@@ -96,7 +102,7 @@ int main() {
             continue;
         }
 
-        // 2. 如果是英文字母或底線開頭，則可能是關鍵字或 ID
+        // 2. 英文字母或底線開頭 => 可能是關鍵字或 ID
         if (isAlpha(c) || c == '_') {
             char buffer[256];
             int idx = 0;
@@ -124,17 +130,16 @@ int main() {
             } else if (strcmp(buffer, "while") == 0) {
                 printToken(buffer, "WHILE_TOKEN");
             } else {
-                // 其他皆視為 ID
+                // 其他情況皆視為 ID
                 printToken(buffer, "ID_TOKEN");
             }
         }
-        // 3. 如果是數字開頭，則視為整數常數
+        // 3. 數字 => 讀取為整數常數
         else if (isDigit(c)) {
             char buffer[256];
             int idx = 0;
             buffer[idx++] = c;
 
-            // 連續讀取所有數字
             while ((c = fgetc(file)) != EOF && isDigit(c)) {
                 buffer[idx++] = c;
             }
@@ -145,9 +150,8 @@ int main() {
 
             printToken(buffer, "LITERAL_TOKEN");
         }
-        // 4. 否則判斷各種運算子與界符
+        // 4. 其他符號 (包含 relop 與其餘單字元 Token)
         else {
-            // 先處理可能的兩字元運算子(==, >=, <=)
             if (c == '=') {
                 char nxt = fgetc(file);
                 if (nxt == '=') {
@@ -197,7 +201,7 @@ int main() {
                 printToken(";", "SEMICOLON_TOKEN");
             }
             else {
-                // 其他字元(不在規格內)就忽略或自行處理
+                // 不在規格內的字元 => 忽略或自行處理
             }
         }
     }
